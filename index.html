@@ -256,23 +256,22 @@
       <div id="ab2" class="acc-body">
         <div class="px-4 pb-5 space-y-3">
           <div class="hint"><span class="text-base mt-0.5">💡</span><p class="text-xs text-indigo-600 leading-relaxed">ClaudeがJSON形式で返してくれます。<br>回答をそのままコピー＆ペーストしてください。</p></div>
-          <textarea id="analysis-raw" rows="4" class="field mono" placeholder='{"translation":"…","keyPhrases":[…]}'></textarea>
+          <textarea id="analysis-raw" rows="4" class="field mono" placeholder='{"translation":"…","keyVocabulary":[…],"usablePatterns":[…]}'></textarea>
           <button onclick="parseAnalysis()" class="btn-parse">✨ 分析結果を表示</button>
           <div id="analysis-results" class="result-block space-y-4">
             <div class="stagger-item" style="--d:0ms">
               <div style="background:linear-gradient(135deg,#eef2ff,#ede9fe);border:1.5px solid #c7d2fe" class="rounded-2xl p-4">
-                <p class="slbl text-indigo-400">📝 日本語訳</p>
+                <p class="slbl text-indigo-400">📝 全体訳</p>
                 <p id="r-trans" class="text-[15px] text-slate-800 font-semibold leading-relaxed"></p>
-                <div id="r-tone-row" class="mt-2"><span id="r-tone" class="text-[11px] bg-white/70 border border-indigo-200 text-indigo-500 px-3 py-1 rounded-full font-bold"></span></div>
               </div>
             </div>
             <div class="stagger-item" style="--d:80ms">
-              <p class="slbl text-slate-400 px-1">🔑 キーフレーズ</p>
-              <div id="r-phrases" class="space-y-2"></div>
+              <p class="slbl text-slate-400 px-1">📖 おさえとくべき単語・表現</p>
+              <div id="r-vocab" class="space-y-2"></div>
             </div>
             <div class="stagger-item" style="--d:160ms">
-              <p class="slbl text-slate-400 px-1">💬 返信候補</p>
-              <div id="r-replies" class="space-y-2"></div>
+              <p class="slbl text-slate-400 px-1">🔁 使えるフレーズ（汎用パターン）</p>
+              <div id="r-patterns" class="space-y-2"></div>
             </div>
           </div>
         </div>
@@ -285,13 +284,20 @@
         <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl flex-shrink-0">✍️</div>
         <div class="flex-1 min-w-0">
           <p class="font-black text-slate-800 text-[14px]">自分の返信を書く</p>
-          <p class="text-xs text-slate-400 mt-0.5">日本語でもOK！英語でもOK！</p>
+          <p class="text-xs text-slate-400 mt-0.5">日本語の意図 → 英語文を入力</p>
         </div>
         <span id="ch3" class="acc-chev closed text-slate-300 text-xs">▼</span>
       </button>
       <div id="ab3" class="acc-body">
         <div class="px-4 pb-5 space-y-3">
-          <textarea id="my-reply" rows="4" class="field" placeholder="返信をここに書く…（日本語でもOK！）"></textarea>
+          <div>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">🇯🇵 伝えたいこと（日本語）</p>
+            <textarea id="reply-ja" rows="3" class="field" placeholder="例：週末の予定を聞いてみたい、楽しみにしてると伝えたい…"></textarea>
+          </div>
+          <div>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">🇺🇸 英語で書いてみた文（任意）</p>
+            <textarea id="my-reply" rows="3" class="field" placeholder="自分で書いた英語文があれば…（なくてもOK）"></textarea>
+          </div>
           <button id="btn-co" onclick="copyCorrectionPrompt(event)" class="cta">
             <div class="cta-main">📋 添削プロンプトをコピー</div>
             <div class="cta-sub">→ Claude.ai に貼り付けて送信</div>
@@ -548,14 +554,17 @@ function onMsgInput(){
 function buildAP(){
   const msg=document.getElementById('received-msg').value.trim();
   if(!msg) return null;
-  return `以下の英語メッセージを分析してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n---\n${msg}\n---\n\n{\n  "translation": "完全な日本語訳",\n  "tone": "メッセージのトーン（例：カジュアル、フレンドリー、ビジネス的）",\n  "keyPhrases": [\n    {\n      "phrase": "英語表現",\n      "meaning": "日本語の意味",\n      "usage": "使い方・ニュアンス（1文）"\n    }\n  ],\n  "replySuggestions": [\n    {\n      "situation": "返信の方向性（例：同意する、質問する、感謝する）",\n      "english": "英語返信文",\n      "japanese": "日本語訳"\n    }\n  ]\n}`;
+  return `以下の英語メッセージを分析してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n---\n${msg}\n---\n\n{\n  "translation": "メッセージ全文の自然な日本語訳",\n  "keyVocabulary": [\n    {\n      "word": "単語またはイディオム",\n      "meaning": "日本語の意味",\n      "note": "使い方・ニュアンス（1文）"\n    }\n  ],\n  "usablePatterns": [\n    {\n      "pattern": "look like ~ など汎用的な型",\n      "meaning": "意味・使い方（日本語）",\n      "example": "例文（英語）",\n      "exampleJa": "例文の日本語訳"\n    }\n  ]\n}`;
 }
 
 function buildCP(){
   const orig=document.getElementById('received-msg').value.trim();
-  const rep=document.getElementById('my-reply').value.trim();
-  if(!rep) return null;
-  return `英語返信を添削してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n【相手のメッセージ】\n${orig||'（なし）'}\n\n【自分の返信（日本語の場合は英語に直してから添削してください）】\n${rep}\n\n{\n  "corrected": "添削・翻訳後の英文",\n  "naturalness": 85,\n  "feedback": "全体的なフィードバック（日本語・1〜2文）",\n  "corrections": [\n    {\n      "original": "元の表現",\n      "corrected": "修正後の表現",\n      "reason": "修正理由（日本語）"\n    }\n  ],\n  "bonusExpressions": [\n    {\n      "expression": "おすすめ表現",\n      "meaning": "意味・使い方（日本語）"\n    }\n  ]\n}`;
+  const ja=document.getElementById('reply-ja').value.trim();
+  const en=document.getElementById('my-reply').value.trim();
+  if(!ja&&!en) return null;
+  const intentLine=ja?`【伝えたいこと（日本語）】\n${ja}`:'';
+  const draftLine=en?`【自分で書いた英語文（あれば添削してください）】\n${en}`:'【自分で書いた英語文】\n（なし）';
+  return `英語返信を作成・添削してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n【相手のメッセージ】\n${orig||'（なし）'}\n\n${intentLine}${intentLine?'\n\n':''}${draftLine}\n\n{\n  "corrected": "完成した英語返信文",\n  "naturalness": 85,\n  "feedback": "全体的なフィードバック（日本語・1〜2文）",\n  "corrections": [\n    {\n      "original": "元の表現",\n      "corrected": "修正後の表現",\n      "reason": "修正理由（日本語）"\n    }\n  ],\n  "bonusExpressions": [\n    {\n      "expression": "おすすめ表現",\n      "meaning": "意味・使い方（日本語）"\n    }\n  ]\n}`;
 }
 
 async function copyAnalysisPrompt(e){
@@ -571,7 +580,7 @@ async function copyAnalysisPrompt(e){
 }
 
 async function copyCorrectionPrompt(e){
-  const p=buildCP();if(!p){toast('返信を入力してください');return;}
+  const p=buildCP();if(!p){toast('伝えたいことか英語文を入力してください');return;}
   const btn=document.getElementById('btn-co');ripple(btn,e);
   if(await copy(p)){
     btn.classList.add('done');
@@ -600,31 +609,29 @@ function triggerStagger(container){
 function parseAnalysis(){
   const raw=document.getElementById('analysis-raw').value.trim();
   if(!raw){toast('Claudeの回答を貼り付けてください');return;}
-  let d;try{d=xj(raw);}catch{d={translation:raw,tone:'',keyPhrases:[],replySuggestions:[]};}
+  let d;try{d=xj(raw);}catch{d={translation:raw,keyVocabulary:[],usablePatterns:[]};}
 
   document.getElementById('r-trans').textContent=d.translation||'';
-  document.getElementById('r-tone').textContent=d.tone||'';
-  document.getElementById('r-tone-row').style.display=d.tone?'':'none';
 
-  // Phrases
-  const phEl=document.getElementById('r-phrases');phEl.innerHTML='';
-  (d.keyPhrases||[]).forEach((p,i)=>{
+  // Key Vocabulary
+  const vcEl=document.getElementById('r-vocab');vcEl.innerHTML='';
+  (d.keyVocabulary||[]).forEach((v,i)=>{
     const div=document.createElement('div');div.className='prow';
     div.style.animationDelay=(i*60)+'ms';
     div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
-    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[14px]">${h(p.phrase)}</p><p class="text-xs text-sky-500 font-bold mt-0.5">${h(p.meaning)}</p>${p.usage?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(p.usage)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-indigo-50 text-indigo-500 border border-indigo-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(p.phrase)}" data-meaning="${h(p.meaning)}" data-usage="${h(p.usage||'')}" data-source="分析">保存</button></div>`;
-    phEl.appendChild(div);
+    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[14px]">${h(v.word)}</p><p class="text-xs text-sky-500 font-bold mt-0.5">${h(v.meaning)}</p>${v.note?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(v.note)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-indigo-50 text-indigo-500 border border-indigo-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(v.word)}" data-meaning="${h(v.meaning)}" data-usage="${h(v.note||'')}" data-source="単語">保存</button></div>`;
+    vcEl.appendChild(div);
   });
 
-  // Replies
-  const rpEl=document.getElementById('r-replies');rpEl.innerHTML='';
-  (d.replySuggestions||[]).forEach((r,i)=>{
+  // Usable Patterns
+  const ptEl=document.getElementById('r-patterns');ptEl.innerHTML='';
+  (d.usablePatterns||[]).forEach((p,i)=>{
     const div=document.createElement('div');div.className='prow';
-    div.style.background='#f0f9ff';div.style.borderColor='#bae6fd';
+    div.style.background='#f0fdf4';div.style.borderColor='#bbf7d0';
     div.style.animationDelay=(i*60)+'ms';
     div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
-    div.innerHTML=`<p class="text-[10px] text-sky-500 font-black uppercase tracking-wider mb-1.5">${h(r.situation)}</p><p class="text-[15px] font-black text-slate-800">${h(r.english)}</p><p class="text-xs text-slate-400 mt-0.5">${h(r.japanese)}</p><button class="use-btn mt-2.5 text-[12px] text-sky-500 font-black bg-white border border-sky-200 rounded-xl px-3 py-1.5 active:scale-95 transition-transform" data-t="${h(r.english)}">→ この文を返信として使う</button>`;
-    rpEl.appendChild(div);
+    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[15px]">${h(p.pattern)}</p><p class="text-xs text-emerald-600 font-bold mt-0.5">${h(p.meaning)}</p>${p.example?`<p class="text-xs text-slate-500 mt-1.5 leading-relaxed italic">"${h(p.example)}"</p>`:''} ${p.exampleJa?`<p class="text-xs text-slate-400 leading-relaxed">${h(p.exampleJa)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(p.pattern)}" data-meaning="${h(p.meaning)}" data-usage="${h(p.example||'')}" data-source="パターン">保存</button></div>`;
+    ptEl.appendChild(div);
   });
 
   const res=document.getElementById('analysis-results');
@@ -680,8 +687,7 @@ function parseCorrection(){
   res.classList.add('show');
   triggerStagger(res);
   completeStep(4);
-  // 🎉 全完了！
-  setTimeout(()=>{celebrate();toast('🎉 全ステップ完了！お疲れさまでした！');},300);
+  setTimeout(()=>toast('🎉 全ステップ完了！お疲れさまでした！'),300);
 }
 
 async function copyCorrectedText(){
@@ -706,8 +712,8 @@ function savePhrase(phrase,meaning,usage,source){
 // ── Session ──
 function saveSession(){
   const orig=document.getElementById('received-msg').value.trim();
-  const rep=document.getElementById('my-reply').value.trim();
-  if(!orig&&!rep){toast('保存する内容がありません');return;}
+  const rep=(document.getElementById('reply-ja').value.trim()||'')+' '+( document.getElementById('my-reply').value.trim()||'');
+  if(!orig&&!rep.trim()){toast('保存する内容がありません');return;}
   const hist=getH();
   hist.push({id:Date.now(),date:new Date().toISOString(),originalMessage:orig,myReply:rep,correctedReply:document.getElementById('r-corrected').textContent||''});
   if(hist.length>100)hist.splice(0,hist.length-100);
@@ -716,7 +722,7 @@ function saveSession(){
 
 function clearSession(ask){
   if(ask&&!confirm('リセットしますか？'))return;
-  ['received-msg','analysis-raw','my-reply','correction-raw'].forEach(id=>document.getElementById(id).value='');
+  ['received-msg','analysis-raw','reply-ja','my-reply','correction-raw'].forEach(id=>document.getElementById(id).value='');
   ['analysis-results','correction-results'].forEach(id=>document.getElementById(id).classList.remove('show'));
   onMsgInput();
   for(let i=1;i<=4;i++)snState(i,i===1?'active':'pending');
