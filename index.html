@@ -152,13 +152,24 @@
     .fc-face { position:absolute; inset:0; border-radius:18px; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:22px; text-align:center; }
     .fc-back { transform:rotateY(180deg); }
 
+    /* ── Quiz ── */
+    .quiz-input {
+      width:100%; border:2px solid #e0e7ff; background:#f8faff;
+      border-radius:16px; padding:14px 16px; color:#1e293b; font-size:18px!important;
+      font-weight:800; text-align:center; transition:border-color .2s,background .2s;
+    }
+    .quiz-input:focus { border-color:var(--p); background:#fff; box-shadow:0 0 0 3px rgba(80,70,229,.1); }
+    .quiz-input.correct { border-color:#059669; background:#ecfdf5; color:#059669; }
+    .quiz-input.wrong   { border-color:#ef4444; background:#fef2f2; color:#ef4444; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+    .shake { animation:shake .35s ease; }
+
+    /* ── Review badge ── */
+    .due-badge { background:#ef4444; color:#fff; font-size:10px; font-weight:900; border-radius:999px; padding:1px 6px; min-width:18px; text-align:center; }
+
     /* ── Toast ── */
     #toast { position:fixed; bottom:calc(78px + var(--safe-bot) + 10px); left:50%; transform:translateX(-50%) translateY(10px); background:rgba(15,23,42,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); color:#fff; font-size:13px; font-weight:600; padding:10px 22px; border-radius:999px; z-index:200; pointer-events:none; white-space:nowrap; opacity:0; transition:opacity .28s,transform .28s; }
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-    /* ── Celebration emojis ── */
-    .cel { position:fixed; z-index:999; pointer-events:none; font-size:28px; animation:celFloat 1.3s ease forwards; }
-    @keyframes celFloat { 0%{opacity:1;transform:translateY(0) scale(.8)} 60%{opacity:1;transform:translateY(-100px) scale(1.2)} 100%{opacity:0;transform:translateY(-180px) scale(.9)} }
 
     /* ── Step complete flash ── */
     @keyframes cardFlash { 0%,100%{background:#fff} 40%{background:#ecfdf5} }
@@ -169,6 +180,15 @@
 
     /* ── Section label ── */
     .slbl { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+
+    /* ── Source selector ── */
+    .src-btn { flex:1; padding:8px 4px; border-radius:12px; font-size:11px; font-weight:800; border:1.5px solid #e2e8f0; background:#fff; color:#94a3b8; cursor:pointer; text-align:center; transition:all .15s; }
+    .src-btn.active { background:var(--p); border-color:var(--p); color:#fff; }
+
+    /* ── Mode toggle ── */
+    .mode-btn { flex:1; padding:9px; border-radius:12px; font-size:12px; font-weight:800; border:none; cursor:pointer; transition:all .18s; }
+    .mode-btn.off { background:#f1f5f9; color:#94a3b8; }
+    .mode-btn.on  { background:var(--p); color:#fff; box-shadow:0 4px 12px rgba(80,70,229,.3); }
 
     /* ── Misc ── */
     .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
@@ -195,8 +215,8 @@
   </div>
 </header>
 
-<!-- ═══ STEPPER ═══ -->
-<div class="stepper-bar">
+<!-- ═══ STEPPER（チャットタブのみ表示） ═══ -->
+<div id="stepper-bar" class="stepper-bar">
   <div class="max-w-lg mx-auto flex items-start">
     <div class="flex flex-col items-center">
       <div id="sn1" class="snode active">1</div><span id="sl1" class="slabel active">受信</span>
@@ -249,14 +269,14 @@
         <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl flex-shrink-0">🔍</div>
         <div class="flex-1 min-w-0">
           <p class="font-black text-slate-800 text-[14px]">Claudeの分析を貼り付け</p>
-          <p class="text-xs text-slate-400 mt-0.5">翻訳・フレーズ・返信候補が出ます</p>
+          <p class="text-xs text-slate-400 mt-0.5">翻訳・単語・パターンが出ます</p>
         </div>
         <span id="ch2" class="acc-chev closed text-slate-300 text-xs">▼</span>
       </button>
       <div id="ab2" class="acc-body">
         <div class="px-4 pb-5 space-y-3">
           <div class="hint"><span class="text-base mt-0.5">💡</span><p class="text-xs text-indigo-600 leading-relaxed">ClaudeがJSON形式で返してくれます。<br>回答をそのままコピー＆ペーストしてください。</p></div>
-          <textarea id="analysis-raw" rows="4" class="field mono" placeholder='{"translation":"…","keyVocabulary":[…],"usablePatterns":[…]}'></textarea>
+          <textarea id="analysis-raw" rows="4" class="field mono" placeholder='{"translation":"…","vocabulary":[…],"expressions":[…],"patterns":[…]}'></textarea>
           <button onclick="parseAnalysis()" class="btn-parse">✨ 分析結果を表示</button>
           <div id="analysis-results" class="result-block space-y-4">
             <div class="stagger-item" style="--d:0ms">
@@ -266,11 +286,15 @@
               </div>
             </div>
             <div class="stagger-item" style="--d:80ms">
-              <p class="slbl text-slate-400 px-1">📖 おさえとくべき単語・表現</p>
+              <p class="slbl text-slate-400 px-1">🔤 単語</p>
               <div id="r-vocab" class="space-y-2"></div>
             </div>
             <div class="stagger-item" style="--d:160ms">
-              <p class="slbl text-slate-400 px-1">🔁 使えるフレーズ（汎用パターン）</p>
+              <p class="slbl text-slate-400 px-1">💬 熟語・表現</p>
+              <div id="r-expr" class="space-y-2"></div>
+            </div>
+            <div class="stagger-item" style="--d:240ms">
+              <p class="slbl text-slate-400 px-1">🔁 使えるパターン</p>
               <div id="r-patterns" class="space-y-2"></div>
             </div>
           </div>
@@ -359,33 +383,96 @@
     </button>
   </div>
 
-  <!-- ══ TAB: ナレッジ ══ -->
-  <div id="tab-knowledge" class="tab-pane space-y-3">
-    <div class="card p-3">
-      <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
-        <span class="text-slate-400">🔍</span>
-        <input id="search-input" type="search" oninput="searchPhrases()" placeholder="フレーズ・単語を検索…" class="flex-1 bg-transparent text-slate-700 placeholder-slate-400 text-[14px]">
+  <!-- ══ TAB: インプット ══ -->
+  <div id="tab-input" class="tab-pane space-y-3">
+
+    <div class="card p-4 space-y-3">
+      <div>
+        <p class="font-black text-slate-800 text-[14px] mb-1">📥 英語テキストを分析</p>
+        <p class="text-xs text-slate-400">SNS・記事・動画コメントなど何でもOK</p>
       </div>
-      <div id="tag-row" class="flex gap-2 mt-2.5 overflow-x-auto no-sb pb-0.5"></div>
+      <!-- ソース選択 -->
+      <div class="flex gap-2">
+        <button class="src-btn active" data-src="SNS" onclick="setSrc(this)">📱 SNS</button>
+        <button class="src-btn" data-src="記事" onclick="setSrc(this)">📰 記事</button>
+        <button class="src-btn" data-src="動画" onclick="setSrc(this)">🎬 動画</button>
+        <button class="src-btn" data-src="その他" onclick="setSrc(this)">💬 その他</button>
+      </div>
+      <textarea id="input-text" rows="5" class="field" placeholder="ここに英語テキストを貼り付け…"></textarea>
+      <button id="btn-ip" onclick="copyInputPrompt(event)" class="cta">
+        <div class="cta-main">📋 分析プロンプトをコピー</div>
+        <div class="cta-sub">→ Claude.ai に貼り付けて送信</div>
+      </button>
     </div>
 
-    <div class="grid grid-cols-2 gap-3">
-      <div class="card p-5 text-center"><p id="stat-p" class="text-4xl font-black text-indigo-500 leading-none">0</p><p class="text-xs text-slate-400 mt-1.5 font-bold">保存フレーズ</p></div>
-      <div class="card p-5 text-center"><p id="stat-h" class="text-4xl font-black text-violet-500 leading-none">0</p><p class="text-xs text-slate-400 mt-1.5 font-bold">会話履歴</p></div>
-    </div>
-
-    <!-- Flashcard -->
-    <div class="card p-4">
-      <div class="flex items-center justify-between mb-4">
-        <div><p class="font-black text-slate-800 text-[14px]">🃏 フラッシュカード</p><p class="text-xs text-slate-400 mt-0.5">保存フレーズを復習</p></div>
-        <div id="fc-tr" class="hidden items-center gap-2">
-          <span id="fc-cnt" class="text-xs text-slate-400 font-bold"></span>
-          <button onclick="endFC()" class="text-xs text-slate-400 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold active:bg-slate-50">終了</button>
+    <div class="card p-4 space-y-3">
+      <p class="font-black text-slate-800 text-[14px]">Claudeの回答を貼り付け</p>
+      <div class="hint"><span class="text-base mt-0.5">💡</span><p class="text-xs text-indigo-600 leading-relaxed">JSON形式の回答をそのまま貼り付けてください。</p></div>
+      <textarea id="input-raw" rows="4" class="field mono" placeholder='{"translation":"…","vocabulary":[…],"expressions":[…],"patterns":[…]}'></textarea>
+      <button onclick="parseInput()" class="btn-parse">✨ 分析結果を表示</button>
+      <div id="input-results" class="result-block space-y-4">
+        <div class="stagger-item" style="--d:0ms">
+          <div style="background:linear-gradient(135deg,#eef2ff,#ede9fe);border:1.5px solid #c7d2fe" class="rounded-2xl p-4">
+            <p class="slbl text-indigo-400">📝 全体訳</p>
+            <p id="ir-trans" class="text-[15px] text-slate-800 font-semibold leading-relaxed"></p>
+          </div>
+        </div>
+        <div class="stagger-item" style="--d:80ms">
+          <p class="slbl text-slate-400 px-1">🔤 単語</p>
+          <div id="ir-vocab" class="space-y-2"></div>
+        </div>
+        <div class="stagger-item" style="--d:160ms">
+          <p class="slbl text-slate-400 px-1">💬 熟語・表現</p>
+          <div id="ir-expr" class="space-y-2"></div>
+        </div>
+        <div class="stagger-item" style="--d:240ms">
+          <p class="slbl text-slate-400 px-1">🔁 使えるパターン</p>
+          <div id="ir-patterns" class="space-y-2"></div>
         </div>
       </div>
-      <div id="fc-start">
-        <button onclick="startFC()" class="w-full rounded-2xl py-4 text-white text-[15px] font-black active:scale-[.97] transition-transform" style="background:linear-gradient(135deg,#7c3aed,#6366f1);box-shadow:0 6px 22px rgba(99,102,241,.42)">🃏 復習スタート</button>
+    </div>
+
+  </div>
+
+  <!-- ══ TAB: ナレッジ ══ -->
+  <div id="tab-knowledge" class="tab-pane space-y-3">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-2">
+      <div class="card p-4 text-center"><p id="stat-p" class="text-3xl font-black text-indigo-500 leading-none">0</p><p class="text-[10px] text-slate-400 mt-1 font-bold">保存フレーズ</p></div>
+      <div class="card p-4 text-center relative">
+        <p id="stat-due" class="text-3xl font-black text-rose-500 leading-none">0</p>
+        <p class="text-[10px] text-slate-400 mt-1 font-bold">今日の復習</p>
       </div>
+      <div class="card p-4 text-center"><p id="stat-h" class="text-3xl font-black text-violet-500 leading-none">0</p><p class="text-[10px] text-slate-400 mt-1 font-bold">会話履歴</p></div>
+    </div>
+
+    <!-- 練習モード -->
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="font-black text-slate-800 text-[14px]">🧠 練習モード</p>
+          <p id="practice-sub" class="text-xs text-slate-400 mt-0.5">フレーズを定着させよう</p>
+        </div>
+        <div id="practice-tr" class="hidden items-center gap-2">
+          <span id="practice-cnt" class="text-xs text-slate-400 font-bold"></span>
+          <button onclick="endPractice()" class="text-xs text-slate-400 border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold active:bg-slate-50">終了</button>
+        </div>
+      </div>
+
+      <!-- モード選択 -->
+      <div id="practice-start" class="space-y-3">
+        <div class="flex gap-2 p-1 bg-slate-100 rounded-2xl">
+          <button id="mode-fc"  class="mode-btn on"  onclick="setMode('fc')">🃏 フラッシュカード</button>
+          <button id="mode-qz"  class="mode-btn off" onclick="setMode('qz')">✏️ 穴埋めクイズ</button>
+        </div>
+        <div id="mode-desc-fc" class="text-xs text-slate-400 text-center">英語を見て意味を思い出す</div>
+        <div id="mode-desc-qz" class="text-xs text-slate-400 text-center hidden">意味を見て英語を入力する（より定着する！）</div>
+        <button onclick="startPractice()" class="w-full rounded-2xl py-4 text-white text-[15px] font-black active:scale-[.97] transition-transform" style="background:linear-gradient(135deg,#7c3aed,#6366f1);box-shadow:0 6px 22px rgba(99,102,241,.42)">スタート</button>
+        <p class="text-center text-[11px] text-slate-400">※ 復習が必要なフレーズを優先で出します</p>
+      </div>
+
+      <!-- フラッシュカード -->
       <div id="fc-play" class="hidden space-y-3">
         <div class="fc-scene" onclick="flipFC()">
           <div id="fc-inner" class="fc-inner">
@@ -407,9 +494,32 @@
           <button onclick="fcAns('good')"  class="bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl py-3 text-xs font-black active:scale-95 transition-transform leading-loose">👍<br>わかった！</button>
         </div>
       </div>
+
+      <!-- 穴埋めクイズ -->
+      <div id="qz-play" class="hidden space-y-3">
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac" class="rounded-2xl p-4 text-center">
+          <p class="text-[10px] text-emerald-500 font-black uppercase tracking-widest mb-2">意味・ヒント</p>
+          <p id="qz-meaning" class="text-[15px] font-black text-slate-800 leading-relaxed"></p>
+          <p id="qz-usage" class="text-xs text-emerald-600 mt-1 leading-relaxed"></p>
+        </div>
+        <input id="qz-input" type="text" class="quiz-input" placeholder="英語フレーズを入力…" oninput="onQzInput()" onkeydown="if(event.key==='Enter')checkQz()">
+        <button onclick="checkQz()" id="btn-qz-check" class="w-full rounded-2xl py-4 text-white text-[15px] font-black active:scale-[.97] transition-transform" style="background:linear-gradient(135deg,#5046e5,#818cf8);box-shadow:0 6px 22px rgba(80,70,229,.38)">答える</button>
+        <div id="qz-result" class="hidden rounded-2xl p-4 text-center">
+          <p id="qz-result-icon" class="text-3xl mb-2"></p>
+          <p id="qz-result-text" class="font-black text-slate-800 text-[15px]"></p>
+          <p id="qz-answer-show" class="text-sm text-slate-500 mt-1"></p>
+        </div>
+        <button id="btn-qz-next" onclick="nextQz()" class="hidden w-full rounded-2xl py-3 text-[14px] font-black active:scale-[.97] transition-transform" style="background:linear-gradient(135deg,#059669,#34d399);box-shadow:0 4px 14px rgba(5,150,105,.35);color:#fff">次へ →</button>
+      </div>
     </div>
 
+    <!-- フレーズ一覧 -->
     <div class="card p-4">
+      <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 mb-3">
+        <span class="text-slate-400">🔍</span>
+        <input id="search-input" type="search" oninput="searchPhrases()" placeholder="フレーズ・単語を検索…" class="flex-1 bg-transparent text-slate-700 placeholder-slate-400 text-[14px]">
+      </div>
+      <div id="tag-row" class="flex gap-2 mb-3 overflow-x-auto no-sb pb-0.5"></div>
       <div class="flex items-center justify-between mb-3">
         <p class="font-black text-slate-800 text-[14px]">保存フレーズ</p>
         <button onclick="exportData()" class="text-[12px] text-sky-500 border border-sky-200 rounded-xl px-3 py-1.5 font-bold active:scale-95 transition-transform">📤 エクスポート</button>
@@ -430,8 +540,9 @@
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="bot-nav">
   <div class="max-w-lg mx-auto flex">
-    <button id="nav-chat"      onclick="switchTab('chat','left')"      class="nav-btn active"><span class="ico">💬</span><span>チャット</span><div class="nav-pip"></div></button>
-    <button id="nav-knowledge" onclick="switchTab('knowledge','right')" class="nav-btn"><span class="ico">📚</span><span>ナレッジ</span><div class="nav-pip"></div></button>
+    <button id="nav-chat"      onclick="switchTab('chat',0)"      class="nav-btn active"><span class="ico">💬</span><span>チャット</span><div class="nav-pip"></div></button>
+    <button id="nav-input"     onclick="switchTab('input',1)"     class="nav-btn"><span class="ico">📥</span><span>インプット</span><div class="nav-pip"></div></button>
+    <button id="nav-knowledge" onclick="switchTab('knowledge',2)" class="nav-btn"><span class="ico">📚</span><span id="nav-k-label">ナレッジ</span><div class="nav-pip"></div></button>
   </div>
 </nav>
 
@@ -450,28 +561,6 @@ const h=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g
 let _tt;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2300);}
 
-// ── Celebration ──
-function celebrate(){
-  const emos=['🎉','✨','🌟','🎊','🥳','💫','⭐','🎈','🪄','🏆'];
-  for(let i=0;i<14;i++){
-    setTimeout(()=>{
-      const el=document.createElement('div');
-      el.className='cel';
-      el.textContent=emos[Math.floor(Math.random()*emos.length)];
-      const sz=22+Math.random()*18;
-      Object.assign(el.style,{
-        fontSize:sz+'px',
-        left:(5+Math.random()*90)+'%',
-        bottom:(80+Math.random()*40)+'px',
-        animationDuration:(.9+Math.random()*.7)+'s',
-        animationDelay:(i*55)+'ms'
-      });
-      document.body.appendChild(el);
-      setTimeout(()=>el.remove(),1800);
-    },i*55);
-  }
-}
-
 // ── Clipboard ──
 async function copy(txt){
   try{await navigator.clipboard.writeText(txt);return true;}catch{}
@@ -487,21 +576,25 @@ function ripple(btn,e){
   btn.appendChild(sp);setTimeout(()=>sp.remove(),700);
 }
 
-// ── Tab switch with slide direction ──
+// ── Tab switch ──
+const TAB_ORDER=['chat','input','knowledge'];
 let currentTab='chat';
-function switchTab(tab,dir){
+function switchTab(tab,idx){
   if(tab===currentTab) return;
+  const prevIdx=TAB_ORDER.indexOf(currentTab);
+  const dir=idx>prevIdx?'right':'left';
   const next=document.getElementById('tab-'+tab);
   const prev=document.getElementById('tab-'+currentTab);
   prev.classList.remove('active');
   next.classList.add('active');
   next.classList.remove('tab-slide-right','tab-slide-left');
-  void next.offsetWidth; // reflow
+  void next.offsetWidth;
   next.classList.add(dir==='right'?'tab-slide-right':'tab-slide-left');
-  ['chat','knowledge'].forEach(t=>{
-    const nb=document.getElementById('nav-'+t);
-    nb.classList.toggle('active',t===tab);
+  TAB_ORDER.forEach(t=>{
+    document.getElementById('nav-'+t)?.classList.toggle('active',t===tab);
   });
+  // ステッパーはチャットタブのみ表示
+  document.getElementById('stepper-bar').style.display=tab==='chat'?'':'none';
   currentTab=tab;
   if(tab==='knowledge') renderKnowledge();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -519,11 +612,9 @@ function completeStep(n){
   snState(n,'done');
   document.getElementById('sc'+n).classList.remove('card-active');
   if(n<4) lineState(n,n+1,'done');
-  // Card flash
   document.getElementById('sc'+n).classList.add('flash-green');
   setTimeout(()=>document.getElementById('sc'+n).classList.remove('flash-green'),500);
 }
-
 function activateStep(n){
   snState(n,'active');
   const sc=document.getElementById('sc'+n);
@@ -550,11 +641,38 @@ function onMsgInput(){
   document.getElementById('s1sub').textContent=v?v.substring(0,45)+(v.length>45?'…':''):'メッセージを貼り付けてください';
 }
 
-// ── Prompts ──
+// ── Analysis JSON schema ──
+const ANALYSIS_SCHEMA=`{
+  "translation": "メッセージ全文の自然な日本語訳",
+  "vocabulary": [
+    {
+      "word": "知っておくべき単語（1語）",
+      "meaning": "日本語の意味",
+      "note": "使い方・ニュアンス（1文）"
+    }
+  ],
+  "expressions": [
+    {
+      "phrase": "熟語・定型表現・イディオム（複数語の決まり文句）",
+      "meaning": "日本語の意味",
+      "note": "使い方・ニュアンス（1文）"
+    }
+  ],
+  "patterns": [
+    {
+      "pattern": "look like ~ など文の型（汎用パターン）",
+      "meaning": "意味・使い方（日本語）",
+      "example": "例文（英語）",
+      "exampleJa": "例文の日本語訳"
+    }
+  ]
+}`;
+
+// ── Chat prompts ──
 function buildAP(){
   const msg=document.getElementById('received-msg').value.trim();
   if(!msg) return null;
-  return `以下の英語メッセージを分析してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n---\n${msg}\n---\n\n{\n  "translation": "メッセージ全文の自然な日本語訳",\n  "keyVocabulary": [\n    {\n      "word": "単語またはイディオム",\n      "meaning": "日本語の意味",\n      "note": "使い方・ニュアンス（1文）"\n    }\n  ],\n  "usablePatterns": [\n    {\n      "pattern": "look like ~ など汎用的な型",\n      "meaning": "意味・使い方（日本語）",\n      "example": "例文（英語）",\n      "exampleJa": "例文の日本語訳"\n    }\n  ]\n}`;
+  return `以下の英語メッセージを分析してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n---\n${msg}\n---\n\n${ANALYSIS_SCHEMA}`;
 }
 
 function buildCP(){
@@ -565,6 +683,19 @@ function buildCP(){
   const intentLine=ja?`【伝えたいこと（日本語）】\n${ja}`:'';
   const draftLine=en?`【自分で書いた英語文（あれば添削してください）】\n${en}`:'【自分で書いた英語文】\n（なし）';
   return `英語返信を作成・添削してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n【相手のメッセージ】\n${orig||'（なし）'}\n\n${intentLine}${intentLine?'\n\n':''}${draftLine}\n\n{\n  "corrected": "完成した英語返信文",\n  "naturalness": 85,\n  "feedback": "全体的なフィードバック（日本語・1〜2文）",\n  "corrections": [\n    {\n      "original": "元の表現",\n      "corrected": "修正後の表現",\n      "reason": "修正理由（日本語）"\n    }\n  ],\n  "bonusExpressions": [\n    {\n      "expression": "おすすめ表現",\n      "meaning": "意味・使い方（日本語）"\n    }\n  ]\n}`;
+}
+
+// ── Input tab prompt ──
+let inputSrc='SNS';
+function setSrc(btn){
+  document.querySelectorAll('.src-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  inputSrc=btn.dataset.src;
+}
+function buildIP(){
+  const txt=document.getElementById('input-text').value.trim();
+  if(!txt) return null;
+  return `以下の英語テキスト（${inputSrc}）を分析してください。\n必ず以下のJSON形式のみで回答してください（コードブロック・説明文は不要です）。\n\n---\n${txt}\n---\n\n${ANALYSIS_SCHEMA}`;
 }
 
 async function copyAnalysisPrompt(e){
@@ -591,53 +722,79 @@ async function copyCorrectionPrompt(e){
   }
 }
 
+async function copyInputPrompt(e){
+  const p=buildIP();if(!p){toast('テキストを入力してください');return;}
+  const btn=document.getElementById('btn-ip');ripple(btn,e);
+  if(await copy(p)){
+    btn.classList.add('done');
+    btn.innerHTML='<div class="cta-main">✅ コピーしました！</div><div class="cta-sub">Claude.ai を開いて貼り付けてください</div>';
+    toast('コピー完了！Claude.ai で実行してください ✉️');
+    setTimeout(()=>{btn.classList.remove('done');btn.innerHTML='<div class="cta-main">📋 分析プロンプトをコピー</div><div class="cta-sub">→ Claude.ai に貼り付けて送信</div>';},3500);
+  }
+}
+
 // ── JSON extract ──
 function xj(raw){const m=raw.match(/\{[\s\S]*\}/);if(!m)throw 0;return JSON.parse(m[0]);}
 
 // ── Stagger trigger ──
 function triggerStagger(container){
   container.querySelectorAll('.stagger-item').forEach((el,i)=>{
-    el.style.animationDelay=(i*80)+'ms';
-    el.style.animation='none';
-    void el.offsetWidth;
-    el.style.animation='staggerUp .3s cubic-bezier(.4,0,.2,1) both';
-    el.style.animationDelay=(i*80)+'ms';
+    el.style.animation='none';void el.offsetWidth;
+    el.style.animation=`staggerUp .3s cubic-bezier(.4,0,.2,1) ${i*80}ms both`;
   });
 }
 
-// ── Parse Analysis ──
+// ── Render helpers ──
+function renderWordList(el,items,keyField,src,bgStyle){
+  el.innerHTML='';
+  (items||[]).forEach((v,i)=>{
+    const word=v[keyField]||'';
+    const div=document.createElement('div');div.className='prow';
+    if(bgStyle){div.style.background=bgStyle.bg;div.style.borderColor=bgStyle.border;}
+    div.style.animation=`staggerUp .28s cubic-bezier(.4,0,.2,1) ${i*60}ms both`;
+    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[14px]">${h(word)}</p><p class="text-xs text-sky-500 font-bold mt-0.5">${h(v.meaning)}</p>${v.note?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(v.note)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-indigo-50 text-indigo-500 border border-indigo-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(word)}" data-meaning="${h(v.meaning)}" data-usage="${h(v.note||'')}" data-source="${h(src)}">保存</button></div>`;
+    el.appendChild(div);
+  });
+}
+function renderVocab(el,items,src){ renderWordList(el,items,'word',src,null); }
+function renderExpressions(el,items,src){ renderWordList(el,items,'phrase',src,{bg:'#fdf4ff',border:'#e9d5ff'}); }
+function renderPatterns(el,items,src){
+  el.innerHTML='';
+  (items||[]).forEach((p,i)=>{
+    const div=document.createElement('div');div.className='prow';
+    div.style.background='#f0fdf4';div.style.borderColor='#bbf7d0';
+    div.style.animation=`staggerUp .28s cubic-bezier(.4,0,.2,1) ${i*60}ms both`;
+    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[15px]">${h(p.pattern)}</p><p class="text-xs text-emerald-600 font-bold mt-0.5">${h(p.meaning)}</p>${p.example?`<p class="text-xs text-slate-500 mt-1.5 leading-relaxed italic">"${h(p.example)}"</p>`:''} ${p.exampleJa?`<p class="text-xs text-slate-400 leading-relaxed">${h(p.exampleJa)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(p.pattern)}" data-meaning="${h(p.meaning)}" data-usage="${h(p.example||'')}" data-source="${h(src)}">保存</button></div>`;
+    el.appendChild(div);
+  });
+}
+
+// ── Parse Analysis (chat tab) ──
 function parseAnalysis(){
   const raw=document.getElementById('analysis-raw').value.trim();
   if(!raw){toast('Claudeの回答を貼り付けてください');return;}
-  let d;try{d=xj(raw);}catch{d={translation:raw,keyVocabulary:[],usablePatterns:[]};}
-
+  let d;try{d=xj(raw);}catch{d={translation:raw,vocabulary:[],expressions:[],patterns:[]};}
   document.getElementById('r-trans').textContent=d.translation||'';
-
-  // Key Vocabulary
-  const vcEl=document.getElementById('r-vocab');vcEl.innerHTML='';
-  (d.keyVocabulary||[]).forEach((v,i)=>{
-    const div=document.createElement('div');div.className='prow';
-    div.style.animationDelay=(i*60)+'ms';
-    div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
-    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[14px]">${h(v.word)}</p><p class="text-xs text-sky-500 font-bold mt-0.5">${h(v.meaning)}</p>${v.note?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(v.note)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-indigo-50 text-indigo-500 border border-indigo-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(v.word)}" data-meaning="${h(v.meaning)}" data-usage="${h(v.note||'')}" data-source="単語">保存</button></div>`;
-    vcEl.appendChild(div);
-  });
-
-  // Usable Patterns
-  const ptEl=document.getElementById('r-patterns');ptEl.innerHTML='';
-  (d.usablePatterns||[]).forEach((p,i)=>{
-    const div=document.createElement('div');div.className='prow';
-    div.style.background='#f0fdf4';div.style.borderColor='#bbf7d0';
-    div.style.animationDelay=(i*60)+'ms';
-    div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
-    div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[15px]">${h(p.pattern)}</p><p class="text-xs text-emerald-600 font-bold mt-0.5">${h(p.meaning)}</p>${p.example?`<p class="text-xs text-slate-500 mt-1.5 leading-relaxed italic">"${h(p.example)}"</p>`:''} ${p.exampleJa?`<p class="text-xs text-slate-400 leading-relaxed">${h(p.exampleJa)}</p>`:''}</div><button class="save-btn flex-shrink-0 text-[11px] bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(p.pattern)}" data-meaning="${h(p.meaning)}" data-usage="${h(p.example||'')}" data-source="パターン">保存</button></div>`;
-    ptEl.appendChild(div);
-  });
-
+  renderVocab(document.getElementById('r-vocab'),d.vocabulary,'単語');
+  renderExpressions(document.getElementById('r-expr'),d.expressions,'熟語・表現');
+  renderPatterns(document.getElementById('r-patterns'),d.patterns,'パターン');
   const res=document.getElementById('analysis-results');
-  res.classList.add('show');
-  triggerStagger(res);
+  res.classList.add('show');triggerStagger(res);
   completeStep(2);setTimeout(()=>activateStep(3),400);
+}
+
+// ── Parse Input (input tab) ──
+function parseInput(){
+  const raw=document.getElementById('input-raw').value.trim();
+  if(!raw){toast('Claudeの回答を貼り付けてください');return;}
+  let d;try{d=xj(raw);}catch{d={translation:raw,vocabulary:[],expressions:[],patterns:[]};}
+  document.getElementById('ir-trans').textContent=d.translation||'';
+  renderVocab(document.getElementById('ir-vocab'),d.vocabulary,'単語');
+  renderExpressions(document.getElementById('ir-expr'),d.expressions,'熟語・表現');
+  renderPatterns(document.getElementById('ir-patterns'),d.patterns,'パターン');
+  const res=document.getElementById('input-results');
+  res.classList.add('show');triggerStagger(res);
+  toast('分析完了！フレーズを保存しよう 📚');
 }
 
 // ── Parse Correction ──
@@ -645,47 +802,35 @@ function parseCorrection(){
   const raw=document.getElementById('correction-raw').value.trim();
   if(!raw){toast('Claudeの添削結果を貼り付けてください');return;}
   let d;try{d=xj(raw);}catch{d={corrected:raw,naturalness:null,feedback:'',corrections:[],bonusExpressions:[]};}
-
   document.getElementById('r-corrected').textContent=d.corrected||'';
-
   const sw=document.getElementById('r-sw');
   if(d.naturalness!=null){
     sw.style.display='flex';
     const s=Math.min(100,Math.max(0,parseInt(d.naturalness)||0));
-    requestAnimationFrame(()=>{
-      document.getElementById('r-sf').style.width=s+'%';
-      document.getElementById('r-sl').textContent=s+'/100';
-    });
+    requestAnimationFrame(()=>{document.getElementById('r-sf').style.width=s+'%';document.getElementById('r-sl').textContent=s+'/100';});
   } else { sw.style.display='none'; }
-
   document.getElementById('r-fb').textContent=d.feedback||'';
-
   const cEl=document.getElementById('r-cs');cEl.innerHTML='';
   const cs=d.corrections||[];
   document.getElementById('r-cw').style.display=cs.length?'':'none';
   cs.forEach((c,i)=>{
     const div=document.createElement('div');div.className='prow';
     div.style.background='#fff7ed';div.style.borderColor='#fed7aa';
-    div.style.animationDelay=(i*60)+'ms';
-    div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
+    div.style.animation=`staggerUp .28s cubic-bezier(.4,0,.2,1) ${i*60}ms both`;
     div.innerHTML=`<p class="text-xs text-red-400 line-through mb-1">${h(c.original)}</p><p class="text-[14px] font-black text-emerald-700">→ ${h(c.corrected)}</p><p class="text-xs text-slate-400 mt-1 leading-relaxed">${h(c.reason)}</p>`;
     cEl.appendChild(div);
   });
-
   const bEl=document.getElementById('r-bs');bEl.innerHTML='';
   const bs=d.bonusExpressions||[];
   document.getElementById('r-bw').style.display=bs.length?'':'none';
   bs.forEach((b,i)=>{
     const div=document.createElement('div');div.className='prow';
-    div.style.animationDelay=(i*60)+'ms';
-    div.style.animation='staggerUp .28s cubic-bezier(.4,0,.2,1) both';
+    div.style.animation=`staggerUp .28s cubic-bezier(.4,0,.2,1) ${i*60}ms both`;
     div.innerHTML=`<div class="flex items-start gap-3"><div class="flex-1 min-w-0"><p class="font-black text-slate-800 text-[14px]">${h(b.expression)}</p><p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(b.meaning)}</p></div><button class="save-btn flex-shrink-0 text-[11px] bg-amber-50 text-amber-600 border border-amber-100 rounded-xl px-2.5 py-1.5 font-black active:scale-95 transition-transform" data-phrase="${h(b.expression)}" data-meaning="${h(b.meaning)}" data-usage="" data-source="添削">保存</button></div>`;
     bEl.appendChild(div);
   });
-
   const res=document.getElementById('correction-results');
-  res.classList.add('show');
-  triggerStagger(res);
+  res.classList.add('show');triggerStagger(res);
   completeStep(4);
   setTimeout(()=>toast('🎉 全ステップ完了！お疲れさまでした！'),300);
 }
@@ -705,17 +850,37 @@ async function copyCorrectedText(){
 function savePhrase(phrase,meaning,usage,source){
   const list=getP();
   if(list.some(p=>p.phrase===phrase)){toast('すでに保存済みです');return;}
-  list.push({id:Date.now(),phrase,meaning,usage,source,savedAt:new Date().toISOString(),reviewCount:0,knownCount:0});
+  list.push({id:Date.now(),phrase,meaning,usage,source,savedAt:new Date().toISOString(),reviewCount:0,knownCount:0,lastReviewed:null});
   setP(list);toast(`「${phrase}」を保存！📚`);
+  updateDueBadge();
+}
+
+// ── Spaced repetition ──
+function isDue(p){
+  if(!p.lastReviewed) return true;
+  const days=(Date.now()-new Date(p.lastReviewed))/86400000;
+  const k=Math.min(p.knownCount||0,4);
+  const intervals=[0,1,3,7,14];
+  return days>=intervals[k];
+}
+function getDueCards(){
+  return getP().filter(isDue);
+}
+function updateDueBadge(){
+  const due=getDueCards().length;
+  document.getElementById('stat-due').textContent=due;
+  // ナレッジタブのアイコンにバッジ
+  const lbl=document.getElementById('nav-k-label');
+  if(lbl) lbl.textContent='ナレッジ'+(due>0?` (${due})`:'');
 }
 
 // ── Session ──
 function saveSession(){
   const orig=document.getElementById('received-msg').value.trim();
-  const rep=(document.getElementById('reply-ja').value.trim()||'')+' '+( document.getElementById('my-reply').value.trim()||'');
+  const rep=(document.getElementById('reply-ja').value.trim()||'')+' '+(document.getElementById('my-reply').value.trim()||'');
   if(!orig&&!rep.trim()){toast('保存する内容がありません');return;}
   const hist=getH();
-  hist.push({id:Date.now(),date:new Date().toISOString(),originalMessage:orig,myReply:rep,correctedReply:document.getElementById('r-corrected').textContent||''});
+  hist.push({id:Date.now(),date:new Date().toISOString(),originalMessage:orig,myReply:rep.trim(),correctedReply:document.getElementById('r-corrected').textContent||''});
   if(hist.length>100)hist.splice(0,hist.length-100);
   setH(hist);clearSession(false);toast('会話を保存しました！');
 }
@@ -738,12 +903,136 @@ function clearSession(ask){
   co.innerHTML='<div class="cta-main">📋 添削プロンプトをコピー</div><div class="cta-sub">→ Claude.ai に貼り付けて送信</div>';
 }
 
+// ── Practice mode ──
+let practiceMode='fc'; // 'fc' or 'qz'
+let practiceDeck=[],practiceIdx=0;
+
+function setMode(m){
+  practiceMode=m;
+  document.getElementById('mode-fc').className='mode-btn '+(m==='fc'?'on':'off');
+  document.getElementById('mode-qz').className='mode-btn '+(m==='qz'?'on':'off');
+  document.getElementById('mode-desc-fc').classList.toggle('hidden',m!=='fc');
+  document.getElementById('mode-desc-qz').classList.toggle('hidden',m!=='qz');
+}
+
+function startPractice(){
+  const all=getP();
+  if(!all.length){toast('フレーズを保存してから使ってください');return;}
+  // 復習が必要なものを優先し、残りをランダムに並べる
+  const due=all.filter(isDue).sort(()=>Math.random()-.5);
+  const rest=all.filter(p=>!isDue(p)).sort(()=>Math.random()-.5);
+  practiceDeck=[...due,...rest];
+  practiceIdx=0;
+  document.getElementById('practice-start').classList.add('hidden');
+  const tr=document.getElementById('practice-tr');tr.classList.remove('hidden');tr.classList.add('flex');
+  document.getElementById('practice-sub').textContent=practiceMode==='fc'?'カードをタップして意味を確認':'意味を見て英語を入力しよう';
+  if(practiceMode==='fc'){
+    document.getElementById('fc-play').classList.remove('hidden');
+    document.getElementById('qz-play').classList.add('hidden');
+    showFCCard();
+  } else {
+    document.getElementById('qz-play').classList.remove('hidden');
+    document.getElementById('fc-play').classList.add('hidden');
+    showQzCard();
+  }
+}
+
+function endPractice(){
+  document.getElementById('fc-play').classList.add('hidden');
+  document.getElementById('qz-play').classList.add('hidden');
+  document.getElementById('practice-start').classList.remove('hidden');
+  const tr=document.getElementById('practice-tr');tr.classList.add('hidden');tr.classList.remove('flex');
+  renderKnowledge();
+}
+
+// ── Flashcard ──
+function showFCCard(){
+  if(practiceIdx>=practiceDeck.length){endPractice();toast('🎉 復習完了！');return;}
+  const c=practiceDeck[practiceIdx];
+  document.getElementById('fc-fr').textContent=c.phrase;
+  document.getElementById('fc-me').textContent=c.meaning;
+  document.getElementById('fc-us').textContent=c.usage||'';
+  document.getElementById('fc-cnt').textContent=`${practiceIdx+1} / ${practiceDeck.length}`;
+  document.getElementById('fc-inner').classList.remove('flipped');
+  document.getElementById('practice-cnt').textContent=`${practiceIdx+1} / ${practiceDeck.length}`;
+}
+function flipFC(){document.getElementById('fc-inner').classList.toggle('flipped');}
+function fcAns(r){
+  const c=practiceDeck[practiceIdx],ps=getP(),i=ps.findIndex(p=>p.id===c.id);
+  if(i>=0){
+    ps[i].reviewCount=(ps[i].reviewCount||0)+1;
+    if(r==='good') ps[i].knownCount=(ps[i].knownCount||0)+1;
+    else if(r==='again') ps[i].knownCount=Math.max(0,(ps[i].knownCount||0)-1);
+    ps[i].lastReviewed=new Date().toISOString();
+    setP(ps);
+  }
+  if(r==='again') practiceDeck.push(practiceDeck[practiceIdx]);
+  practiceIdx++;showFCCard();
+}
+
+// ── Quiz ──
+let qzAnswered=false;
+function showQzCard(){
+  if(practiceIdx>=practiceDeck.length){endPractice();toast('🎉 クイズ完了！');return;}
+  const c=practiceDeck[practiceIdx];
+  document.getElementById('qz-meaning').textContent=c.meaning;
+  document.getElementById('qz-usage').textContent=c.usage||'';
+  document.getElementById('practice-cnt').textContent=`${practiceIdx+1} / ${practiceDeck.length}`;
+  const inp=document.getElementById('qz-input');
+  inp.value='';inp.className='quiz-input';inp.disabled=false;
+  document.getElementById('qz-result').classList.add('hidden');
+  document.getElementById('btn-qz-next').classList.add('hidden');
+  document.getElementById('btn-qz-check').classList.remove('hidden');
+  qzAnswered=false;
+  setTimeout(()=>inp.focus(),100);
+}
+function onQzInput(){
+  const inp=document.getElementById('qz-input');
+  inp.className='quiz-input'; // reset color
+}
+function checkQz(){
+  if(qzAnswered) return;
+  const inp=document.getElementById('qz-input');
+  const answer=inp.value.trim();
+  if(!answer){toast('入力してください');return;}
+  const c=practiceDeck[practiceIdx];
+  const correct=answer.toLowerCase()===c.phrase.toLowerCase();
+  qzAnswered=true;
+  inp.disabled=true;
+  inp.className='quiz-input '+(correct?'correct':'wrong');
+  if(!correct) inp.classList.add('shake');
+  const resEl=document.getElementById('qz-result');
+  resEl.classList.remove('hidden');
+  document.getElementById('qz-result-icon').textContent=correct?'🎉':'😅';
+  document.getElementById('qz-result-text').textContent=correct?'正解！':'惜しい！';
+  document.getElementById('qz-answer-show').textContent=correct?'':`正解：${c.phrase}`;
+  resEl.style.background=correct?'linear-gradient(135deg,#ecfdf5,#d1fae5)':'linear-gradient(135deg,#fef2f2,#fee2e2)';
+  resEl.style.borderRadius='16px';
+  document.getElementById('btn-qz-check').classList.add('hidden');
+  document.getElementById('btn-qz-next').classList.remove('hidden');
+  // Update stats
+  const ps=getP(),i=ps.findIndex(p=>p.id===c.id);
+  if(i>=0){
+    ps[i].reviewCount=(ps[i].reviewCount||0)+1;
+    if(correct) ps[i].knownCount=(ps[i].knownCount||0)+1;
+    else ps[i].knownCount=Math.max(0,(ps[i].knownCount||0)-1);
+    ps[i].lastReviewed=new Date().toISOString();
+    setP(ps);
+  }
+  if(!correct) practiceDeck.push(practiceDeck[practiceIdx]);
+}
+function nextQz(){
+  practiceIdx++;
+  showQzCard();
+}
+
 // ── Knowledge ──
 let activeTag='all';
 function renderKnowledge(){
   const p=getP(),hh=getH();
   document.getElementById('stat-p').textContent=p.length;
   document.getElementById('stat-h').textContent=hh.length;
+  document.getElementById('stat-due').textContent=getDueCards().length;
   const srcs=['all',...new Set(p.map(x=>x.source).filter(Boolean))];
   document.getElementById('tag-row').innerHTML=srcs.map(t=>`<button class="tpill${t===activeTag?' active':''}" onclick="filterTag('${h(t)}')">${t==='all'?'すべて':h(t)}</button>`).join('');
   renderPL(p);renderHL(hh);
@@ -754,10 +1043,18 @@ function renderPL(phrases){
   if(activeTag!=='all')list=list.filter(p=>p.source===activeTag);
   const q=(document.getElementById('search-input').value||'').toLowerCase().trim();
   if(q)list=list.filter(p=>(p.phrase+p.meaning).toLowerCase().includes(q));
-  list.reverse();
+  // 復習が必要なものを先に
+  list.sort((a,b)=>{
+    const ad=isDue(a)?0:1,bd=isDue(b)?0:1;
+    if(ad!==bd)return ad-bd;
+    return new Date(b.savedAt)-new Date(a.savedAt);
+  });
   const el=document.getElementById('phrases-list');
   if(!list.length){el.innerHTML=`<div class="text-center py-10"><p class="text-4xl mb-3">${q?'🔍':'📭'}</p><p class="text-sm text-slate-400 font-bold">${q?'見つかりません':'まだ保存されていません'}</p></div>`;return;}
-  el.innerHTML=list.map((p,i)=>`<div class="prow mb-2" style="animation:staggerUp .24s cubic-bezier(.4,0,.2,1) ${i*40}ms both"><div class="flex items-start gap-3"><div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap mb-0.5"><p class="font-black text-slate-800 text-[14px]">${h(p.phrase)}</p>${p.source?`<span class="text-[10px] bg-indigo-50 text-indigo-400 px-2 py-0.5 rounded-md font-bold">${h(p.source)}</span>`:''}</div><p class="text-xs text-sky-500 font-bold">${h(p.meaning)}</p>${p.usage?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(p.usage)}</p>`:''}<p class="text-[10px] text-slate-300 mt-1 font-medium">${new Date(p.savedAt).toLocaleDateString('ja-JP')}${p.reviewCount?` · 復習${p.reviewCount}回`:''}</p></div><button class="del-btn text-slate-300 text-sm px-2 py-1 active:text-red-400 transition-colors font-bold" data-id="${p.id}">✕</button></div></div>`).join('');
+  el.innerHTML=list.map((p,i)=>{
+    const due=isDue(p);
+    return `<div class="prow mb-2" style="animation:staggerUp .24s cubic-bezier(.4,0,.2,1) ${i*40}ms both${due?';border-color:#fca5a5;background:#fff5f5':''}"><div class="flex items-start gap-3"><div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap mb-0.5"><p class="font-black text-slate-800 text-[14px]">${h(p.phrase)}</p>${due?'<span class="text-[10px] bg-red-50 text-red-400 px-2 py-0.5 rounded-md font-bold">復習</span>':''}${p.source?`<span class="text-[10px] bg-indigo-50 text-indigo-400 px-2 py-0.5 rounded-md font-bold">${h(p.source)}</span>`:''}</div><p class="text-xs text-sky-500 font-bold">${h(p.meaning)}</p>${p.usage?`<p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${h(p.usage)}</p>`:''}<p class="text-[10px] text-slate-300 mt-1 font-medium">${new Date(p.savedAt).toLocaleDateString('ja-JP')}${p.reviewCount?` · 復習${p.reviewCount}回`:''}</p></div><button class="del-btn text-slate-300 text-sm px-2 py-1 active:text-red-400 transition-colors font-bold" data-id="${p.id}">✕</button></div></div>`;
+  }).join('');
 }
 
 function renderHL(history){
@@ -773,39 +1070,7 @@ function filterTag(tag){
   document.querySelectorAll('.tpill').forEach(b=>b.classList.toggle('active',(tag==='all'&&b.textContent==='すべて')||b.textContent===tag));
   renderPL(getP());
 }
-function deletePhrase(id){setP(getP().filter(p=>p.id!==id));renderKnowledge();toast('削除しました');}
-
-// ── Flashcard ──
-let fcDeck=[],fcIdx=0;
-function startFC(){
-  const p=getP();if(!p.length){toast('フレーズを保存してから使ってください');return;}
-  fcDeck=[...p].sort(()=>Math.random()-.5);fcIdx=0;
-  document.getElementById('fc-start').classList.add('hidden');
-  document.getElementById('fc-play').classList.remove('hidden');
-  const tr=document.getElementById('fc-tr');tr.classList.remove('hidden');tr.classList.add('flex');
-  showFCCard();
-}
-function showFCCard(){
-  if(fcIdx>=fcDeck.length){endFC();toast('🎉 復習完了！');celebrate();return;}
-  const c=fcDeck[fcIdx];
-  document.getElementById('fc-fr').textContent=c.phrase;
-  document.getElementById('fc-me').textContent=c.meaning;
-  document.getElementById('fc-us').textContent=c.usage||'';
-  document.getElementById('fc-cnt').textContent=`${fcIdx+1} / ${fcDeck.length}`;
-  document.getElementById('fc-inner').classList.remove('flipped');
-}
-function flipFC(){document.getElementById('fc-inner').classList.toggle('flipped');}
-function fcAns(r){
-  const c=fcDeck[fcIdx],ps=getP(),i=ps.findIndex(p=>p.id===c.id);
-  if(i>=0){ps[i].reviewCount=(ps[i].reviewCount||0)+1;if(r==='good')ps[i].knownCount=(ps[i].knownCount||0)+1;ps[i].lastReviewed=new Date().toISOString();setP(ps);}
-  if(r==='again')fcDeck.push(fcDeck[fcIdx]);
-  fcIdx++;showFCCard();
-}
-function endFC(){
-  document.getElementById('fc-play').classList.add('hidden');
-  document.getElementById('fc-start').classList.remove('hidden');
-  const tr=document.getElementById('fc-tr');tr.classList.add('hidden');tr.classList.remove('flex');
-}
+function deletePhrase(id){setP(getP().filter(p=>p.id!==id));renderKnowledge();updateDueBadge();toast('削除しました');}
 
 // ── Export ──
 function exportData(){
@@ -815,7 +1080,7 @@ function exportData(){
 }
 function clearAllData(){
   if(!confirm('全データを削除しますか？'))return;
-  localStorage.removeItem(KP);localStorage.removeItem(KH);renderKnowledge();toast('削除しました');
+  localStorage.removeItem(KP);localStorage.removeItem(KH);renderKnowledge();updateDueBadge();toast('削除しました');
 }
 
 // ── Event delegation ──
@@ -830,6 +1095,7 @@ document.addEventListener('click',e=>{
 
 // ── Init ──
 renderKnowledge();
+updateDueBadge();
 </script>
 </body>
 </html>
